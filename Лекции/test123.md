@@ -1,479 +1,275 @@
-# Детальное объяснение ООП в C++
+## 1. Инкапсуляция (Encapsulation)
 
-## 1. Введение в ООП - Подробное объяснение
+### Что это такое?
+**Инкапсуляция** - это механизм объединения данных и методов, которые работают с этими данными, в одной единице (классе), и ограничение прямого доступа к внутренним данным извне.
 
-### Что такое ООП на практике?
-
-**Объектно-Ориентированное Программирование** - это не просто синтаксис, а способ мышления. Давайте представим реальный пример:
+### Детальное объяснение:
 
 ```cpp
-// Без ООП - процедурный подход
-struct Car {
-    string brand;
-    string model;
-    int year;
-    double engineVolume;
-    bool isRunning;
-};
+#include <iostream>
+#include <string>
+using namespace std;
 
-void startCar(Car* car) {
-    car->isRunning = true;
-    cout << car->brand << " " << car->model << " завелась" << endl;
-}
+class BankAccount {
+private: // ← Уровень доступа: закрытые члены
+    string accountNumber;    // Нельзя получить напрямую извне
+    double balance;         // Нельзя изменить напрямую извне
+    string ownerName;       // Защищено от некорректных изменений
 
-void stopCar(Car* car) {
-    car->isRunning = false;
-    cout << car->brand << " " << car->model << " остановилась" << endl;
-}
-
-// С ООП - объектный подход
-class Car {
-private:
-    string brand;
-    string model;
-    int year;
-    double engineVolume;
-    bool isRunning;
-    double fuelLevel;
-
-public:
-    Car(string b, string m, int y, double engine) 
-        : brand(b), model(m), year(y), engineVolume(engine), isRunning(false), fuelLevel(100.0) {}
+public: // ← Уровень доступа: публичные методы
+    // Конструктор - инициализирует данные
+    BankAccount(string accNum, string owner, double initialBalance) {
+        // Валидация данных при создании
+        if (initialBalance < 0) {
+            throw invalid_argument("Баланс не может быть отрицательным");
+        }
+        accountNumber = accNum;
+        ownerName = owner;
+        balance = initialBalance;
+    }
     
-    void start() {
-        if (fuelLevel > 0) {
-            isRunning = true;
-            cout << brand << " " << model << " завелась" << endl;
+    // Геттеры - контролируемый доступ для чтения
+    string getAccountNumber() const {
+        return accountNumber;
+    }
+    
+    double getBalance() const {
+        return balance;
+    }
+    
+    string getOwnerName() const {
+        return ownerName;
+    }
+    
+    // Сеттеры - контролируемый доступ для записи
+    void setOwnerName(string newName) {
+        if (!newName.empty() && newName.length() >= 2) {
+            ownerName = newName;
         } else {
-            cout << "Недостаточно топлива!" << endl;
+            cout << "Ошибка: Имя владельца слишком короткое" << endl;
         }
     }
     
-    void stop() {
-        isRunning = false;
-        cout << brand << " " << model << " остановилась" << endl;
+    // Бизнес-методы - единственный способ изменить баланс
+    void deposit(double amount) {
+        if (amount > 0) {
+            balance += amount;
+            cout << "Внесено: " << amount << ". Новый баланс: " << balance << endl;
+        } else {
+            cout << "Ошибка: Сумма депозита должна быть положительной" << endl;
+        }
     }
     
-    void refuel(double amount) {
-        fuelLevel += amount;
-        if (fuelLevel > 100.0) fuelLevel = 100.0;
+    bool withdraw(double amount) {
+        if (amount > 0 && amount <= balance) {
+            balance -= amount;
+            cout << "Снято: " << amount << ". Новый баланс: " << balance << endl;
+            return true;
+        } else {
+            cout << "Ошибка: Недостаточно средств или неверная сумма" << endl;
+            return false;
+        }
     }
     
     void displayInfo() const {
-        cout << brand << " " << model << " " << year << " года" << endl;
-        cout << "Состояние: " << (isRunning ? "заведена" : "заглушена") << endl;
-        cout << "Топливо: " << fuelLevel << "%" << endl;
+        cout << "Счет: " << accountNumber << endl;
+        cout << "Владелец: " << ownerName << endl;
+        cout << "Баланс: " << balance << endl;
     }
 };
 ```
 
-### Почему ООП лучше?
+### Почему это важно?
 
-**Без ООП проблемы:**
-- Данные и функции разделены
-- Легко нарушить целостность данных
-- Сложно отследить, какие функции работают с какими структурами
-- Нет контроля над изменением состояния
-
-**С ООП преимущества:**
-- Данные и методы объединены
-- Контроль доступа к данным
-- Легче тестировать и отлаживать
-- Код более читаем и поддерживаем
-
-## 2. Классы и объекты - Глубокое погружение
-
-### Разница между class и struct
-
+**Без инкапсуляции:**
 ```cpp
-// В C++ разница минимальна:
-struct PersonStruct {      // по умолчанию все public
-    string name;
-    int age;
-    
-    void display() {
-        cout << name << ", " << age << " лет" << endl;
-    }
+// ПЛОХОЙ ПРИМЕР - нет инкапсуляции
+struct BankAccountBad {
+    string accountNumber;
+    double balance;  // Любой может изменить напрямую!
+    string ownerName;
 };
 
-class PersonClass {        // по умолчанию все private
-    string name;
-    int age;
-    
-public:
-    void display() {
-        cout << name << ", " << age << " лет" << endl;
-    }
-    
-    void setName(string n) {
-        if (!n.empty()) {
-            name = n;
-        }
-    }
-};
+int main() {
+    BankAccountBad acc;
+    acc.balance = -1000;  // Некорректные данные!
+    acc.accountNumber = "";  // Пустой номер счета!
+}
 ```
 
-### Конвенции именования
+**С инкапсуляцией:**
+```cpp
+int main() {
+    BankAccount acc("123456", "Иван Иванов", 1000);
+    
+    // acc.balance = -1000;  // ОШИБКА КОМПИЛЯЦИИ - приватное поле!
+    // acc.accountNumber = "999";  // ОШИБКА - нельзя изменить напрямую!
+    
+    acc.deposit(500);     // OK - через контролируемый метод
+    acc.withdraw(200);    // OK - с проверкой
+    acc.setOwnerName("Петр Петров");  // OK - с валидацией
+    
+    cout << "Баланс: " << acc.getBalance() << endl;  // OK - только чтение
+}
+```
+
+### Преимущества инкапсуляции:
+1. **Защита данных** - предотвращение некорректных состояний
+2. **Гибкость** - можно менять внутреннюю реализацию без влияния на внешний код
+3. **Контроль доступа** - разные уровни доступа для разных частей программы
+4. **Упрощение использования** - пользователь класса не должен знать о внутренней реализации
+
+---
+
+## 2. Наследование (Inheritance)
+
+### Что это такое?
+**Наследование** - это механизм создания нового класса на основе существующего, с возможностью reuse (повторного использования) и расширения функциональности.
+
+### Детальное объяснение:
 
 ```cpp
-class BankAccount {
-private:
-    string m_accountNumber;    // префикс m_ для членов класса
-    double m_balance;          // ясность в методах
-    
+#include <iostream>
+#include <string>
+using namespace std;
+
+// Базовый класс (родительский)
+class Animal {
+protected: // ← Защищенные члены - доступны в производных классах
+    string name;
+    int age;
+    double weight;
+
 public:
+    // Конструктор базового класса
+    Animal(string n, int a, double w) : name(n), age(a), weight(w) {
+        cout << "Создан объект Animal: " << name << endl;
+    }
+    
+    // Виртуальный деструктор - ОЧЕНЬ ВАЖНО для полиморфизма!
+    virtual ~Animal() {
+        cout << "Уничтожен объект Animal: " << name << endl;
+    }
+    
+    // Виртуальные методы - могут быть переопределены в производных классах
+    virtual void makeSound() const {
+        cout << name << " издает неопределенный звук" << endl;
+    }
+    
+    virtual void move() const {
+        cout << name << " перемещается" << endl;
+    }
+    
+    // Невиртуальные методы - наследуются как есть
+    void sleep() const {
+        cout << name << " спит" << endl;
+    }
+    
+    void eat() const {
+        cout << name << " ест" << endl;
+    }
+    
     // Геттеры
-    string getAccountNumber() const { return m_accountNumber; }
-    double getBalance() const { return m_balance; }
+    string getName() const { return name; }
+    int getAge() const { return age; }
+    double getWeight() const { return weight; }
     
     // Сеттеры
-    void setAccountNumber(const string& accNum) {
-        if (accNum.length() == 20) {  // проверка IBAN
-            m_accountNumber = accNum;
-        }
+    void setAge(int a) { 
+        if (a >= 0) age = a; 
+    }
+    
+    void setWeight(double w) { 
+        if (w > 0) weight = w; 
     }
 };
-```
 
-### Вопрос: Когда использовать struct vs class?
-
-**Ответ:**
-- **struct** для простых контейнеров данных (Point, Rectangle, Color)
-- **class** для сложных объектов с поведением и инвариантами
-
-```cpp
-// struct - пассивные данные
-struct Point {
-    double x, y;
-    // нет сложного поведения, только данные
-};
-
-struct RGB {
-    uint8_t red, green, blue;
-};
-
-// class - активные объекты с поведением
-class FileHandler {
-private:
-    FILE* m_file;
-    string m_fileName;
-    bool m_isOpen;
-    
-public:
-    bool open(const string& filename);
-    bool close();
-    string readLine();
-    bool write(const string& data);
-    // сложное управление ресурсами
-};
-```
-
-## 3. Инкапсуляция - Защита данных
-
-### Почему приватные поля так важны?
-
-```cpp
-class Temperature {
-private:
-    double m_celsius;  // внутреннее представление
-
-public:
-    // Конструктор с валидацией
-    Temperature(double celsius) {
-        setCelsius(celsius);
-    }
-    
-    // Геттер
-    double getCelsius() const { 
-        return m_celsius; 
-    }
-    
-    // Сеттер с валидацией
-    void setCelsius(double celsius) {
-        // Абсолютный ноль - минимальная возможная температура
-        if (celsius >= -273.15) {
-            m_celsius = celsius;
-        } else {
-            throw invalid_argument("Температура не может быть ниже абсолютного нуля!");
-        }
-    }
-    
-    // Другие представления температуры
-    double getFahrenheit() const {
-        return m_celsius * 9.0/5.0 + 32.0;
-    }
-    
-    void setFahrenheit(double fahrenheit) {
-        setCelsius((fahrenheit - 32.0) * 5.0/9.0);
-    }
-    
-    double getKelvin() const {
-        return m_celsius + 273.15;
-    }
-    
-    void setKelvin(double kelvin) {
-        setCelsius(kelvin - 273.15);
-    }
-};
-```
-
-### Инварианты класса
-
-**Инвариант** - условие, которое всегда истинно для объекта.
-
-```cpp
-class Date {
-private:
-    int m_day, m_month, m_year;
-    
-    // Приватный метод для проверки валидности даты
-    bool isValidDate(int day, int month, int year) const {
-        if (year < 1 || month < 1 || month > 12 || day < 1) 
-            return false;
-            
-        int daysInMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-        
-        // Проверка високосного года
-        if (month == 2 && isLeapYear(year)) {
-            return day <= 29;
-        }
-        
-        return day <= daysInMonth[month - 1];
-    }
-    
-    bool isLeapYear(int year) const {
-        return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
-    }
-
-public:
-    Date(int day, int month, int year) {
-        // Поддерживаем инвариант: дата всегда валидна
-        if (!isValidDate(day, month, year)) {
-            throw invalid_argument("Некорректная дата!");
-        }
-        m_day = day;
-        m_month = month;
-        m_year = year;
-    }
-    
-    void setDate(int day, int month, int year) {
-        if (!isValidDate(day, month, year)) {
-            throw invalid_argument("Некорректная дата!");
-        }
-        m_day = day;
-        m_month = month;
-        m_year = year;
-    }
-    
-    // Инвариант гарантирует, что дата всегда корректна
-};
-```
-
-## 4. Конструкторы и деструкторы - Управление жизненным циклом
-
-### Подробно о конструкторах
-
-```cpp
-class SmartArray {
-private:
-    int* m_data;
-    size_t m_size;
-    size_t m_capacity;
-
-public:
-    // 1. Конструктор по умолчанию
-    SmartArray() : m_data(nullptr), m_size(0), m_capacity(0) {
-        cout << "Конструктор по умолчанию" << endl;
-    }
-    
-    // 2. Параметризованный конструктор
-    SmartArray(size_t capacity) : m_size(0), m_capacity(capacity) {
-        m_data = new int[capacity];
-        cout << "Параметризованный конструктор, capacity: " << capacity << endl;
-    }
-    
-    // 3. Конструктор копирования (ГЛУБОКОЕ копирование)
-    SmartArray(const SmartArray& other) 
-        : m_size(other.m_size), m_capacity(other.m_capacity) {
-        
-        m_data = new int[m_capacity];
-        for (size_t i = 0; i < m_size; ++i) {
-            m_data[i] = other.m_data[i];
-        }
-        cout << "Конструктор копирования" << endl;
-    }
-    
-    // 4. Конструктор перемещения (C++11)
-    SmartArray(SmartArray&& other) noexcept 
-        : m_data(other.m_data), m_size(other.m_size), m_capacity(other.m_capacity) {
-        
-        // "Обкрадываем" другой объект
-        other.m_data = nullptr;
-        other.m_size = 0;
-        other.m_capacity = 0;
-        cout << "Конструктор перемещения" << endl;
-    }
-    
-    // 5. Деструктор
-    ~SmartArray() {
-        delete[] m_data;  // безопасно для nullptr
-        cout << "Деструктор, size: " << m_size << endl;
-    }
-    
-    // 6. Оператор присваивания копированием
-    SmartArray& operator=(const SmartArray& other) {
-        cout << "Оператор присваивания копированием" << endl;
-        
-        // Защита от самоприсваивания: a = a;
-        if (this == &other) {
-            return *this;
-        }
-        
-        // Освобождаем старые ресурсы
-        delete[] m_data;
-        
-        // Копируем новые ресурсы
-        m_size = other.m_size;
-        m_capacity = other.m_capacity;
-        m_data = new int[m_capacity];
-        for (size_t i = 0; i < m_size; ++i) {
-            m_data[i] = other.m_data[i];
-        }
-        
-        return *this;
-    }
-    
-    // 7. Оператор присваивания перемещением
-    SmartArray& operator=(SmartArray&& other) noexcept {
-        cout << "Оператор присваивания перемещением" << endl;
-        
-        // Защита от самоприсваивания
-        if (this == &other) {
-            return *this;
-        }
-        
-        // Освобождаем старые ресурсы
-        delete[] m_data;
-        
-        // Перемещаем ресурсы
-        m_data = other.m_data;
-        m_size = other.m_size;
-        m_capacity = other.m_capacity;
-        
-        // Обнуляем другой объект
-        other.m_data = nullptr;
-        other.m_size = 0;
-        other.m_capacity = 0;
-        
-        return *this;
-    }
-};
-```
-
-### Почему список инициализации важен?
-
-```cpp
-class Example {
-private:
-    const int m_constValue;    // должен быть инициализирован при создании
-    int& m_reference;          // должен быть инициализирован при создании
-    string m_name;
-    vector<int> m_data;
-
-public:
-    // ПРАВИЛЬНО - список инициализации
-    Example(int value, int& ref, string name) 
-        : m_constValue(value)    // инициализация константы
-        , m_reference(ref)       // инициализация ссылки
-        , m_name(move(name))     // эффективная инициализация строки
-        , m_data(100, 0)         // инициализация вектора
-    {
-        // Тело конструктора
-    }
-    
-    // НЕПРАВИЛЬНО - присваивание в теле
-    /*
-    Example(int value, int& ref, string name) {
-        // ОШИБКА: m_constValue и m_reference должны быть инициализированы
-        m_constValue = value;    // ОШИБКА компиляции!
-        m_reference = ref;       // ОШИБКА компиляции!
-        
-        m_name = name;           // Неэффективно: вызов конструктора + оператор присваивания
-        m_data = vector<int>(100, 0); // Неэффективно: временный объект + присваивание
-    }
-    */
-};
-```
-
-### Порядок инициализации
-
-**Важно:** Поля инициализируются в порядке объявления в классе, а не в порядке списка инициализации!
-
-```cpp
-class OrderExample {
-private:
-    int a;    // 1
-    int b;    // 2
-    int c;    // 3
-
-public:
-    // ОПАСНО: порядок инициализации a, b, c (по объявлению)
-    // но в списке написано c, b, a
-    OrderExample(int value) : c(value), b(c + 1), a(b + 1) {
-        // Проблема: b инициализируется ДО c, но использует c!
-        // a инициализируется ДО b, но использует b!
-    }
-    
-    // ПРАВИЛЬНО:
-    OrderExample(int value) : a(value + 2), b(value + 1), c(value) {
-        // Теперь порядок правильный
-    }
-};
-```
-
-## 5. Наследование - Отношения "is-a"
-
-### Типы наследования на практике
-
-```cpp
-class Animal {
-protected:
-    string m_name;
-    int m_age;
-
-public:
-    Animal(string name, int age) : m_name(name), m_age(age) {}
-    
-    virtual void speak() const {
-        cout << m_name << " издает звук" << endl;
-    }
-    
-    virtual void eat() const {
-        cout << m_name << " ест" << endl;
-    }
-    
-    virtual ~Animal() = default;
-};
-
-// Public наследование - "является"
+// Производный класс (дочерний) - наследование public
 class Dog : public Animal {
 private:
-    string m_breed;
+    string breed;
+    bool isTrained;
 
 public:
-    Dog(string name, int age, string breed) 
-        : Animal(name, age), m_breed(breed) {}
-    
-    void speak() const override {
-        cout << m_name << " гавкает: Гав-гав!" << endl;
+    // Конструктор производного класса
+    Dog(string n, int a, double w, string b, bool trained) 
+        : Animal(n, a, w),  // Вызов конструктора базового класса
+          breed(b), isTrained(trained) {
+        cout << "Создан объект Dog: " << name << endl;
     }
     
+    ~Dog() {
+        cout << "Уничтожен объект Dog: " << name << endl;
+    }
+    
+    // Переопределение виртуальных методов
+    void makeSound() const override {
+        cout << name << " гавкает: Гав-гав!" << endl;
+    }
+    
+    void move() const override {
+        cout << name << " бегает на четырех лапах" << endl;
+    }
+    
+    // Новые методы, специфичные для Dog
     void fetch() const {
-        cout << m_name << " приносит палку!" << endl;
+        cout << name << " приносит палку!" << endl;
     }
+    
+    void guard() const {
+        if (isTrained) {
+            cout << name << " охраняет территорию" << endl;
+        }
+    }
+    
+    // Геттеры для новых полей
+    string getBreed() const { return breed; }
+    bool getIsTrained() const { return isTrained; }
 };
 
-// Protected наследование - редко используется
+// Еще один производный класс
+class Bird : public Animal {
+private:
+    double wingspan;
+    bool canFly;
+
+public:
+    Bird(string n, int a, double w, double wings, bool fly) 
+        : Animal(n, a, w), wingspan(wings), canFly(fly) {
+        cout << "Создан объект Bird: " << name << endl;
+    }
+    
+    ~Bird() {
+        cout << "Уничтожен объект Bird: " << name << endl;
+    }
+    
+    // Переопределение виртуальных методов
+    void makeSound() const override {
+        cout << name << " поет: Чик-чирик!" << endl;
+    }
+    
+    void move() const override {
+        if (canFly) {
+            cout << name << " летает с размахом крыльев " << wingspan << " см" << endl;
+        } else {
+            cout << name << " прыгает по земле" << endl;
+        }
+    }
+    
+    // Новые методы, специфичные для Bird
+    void buildNest() const {
+        cout << name << " строит гнездо" << endl;
+    }
+    
+    // Геттеры
+    double getWingspan() const { return wingspan; }
+    bool getCanFly() const { return canFly; }
+};
+```
+
+### Типы наследования:
+
+```cpp
 class Base {
 public:
     int publicVar;
@@ -483,649 +279,611 @@ private:
     int privateVar;
 };
 
+// Public наследование - наиболее распространенное
+class DerivedPublic : public Base {
+    // publicVar остается public
+    // protectedVar остается protected  
+    // privateVar НЕДОСТУПНА
+};
+
+// Protected наследование
 class DerivedProtected : protected Base {
     // publicVar становится protected
-    // protectedVar остается protected  
-    // privateVar недоступна
-public:
-    void test() {
-        publicVar = 1;      // OK - теперь protected
-        protectedVar = 2;   // OK
-        // privateVar = 3;  // ERROR
-    }
+    // protectedVar остается protected
+    // privateVar НЕДОСТУПНА
 };
 
-// Private наследование - "реализовано посредством"
-class Stack : private vector<int> {
-    // Все public/protected члены vector становятся private
-public:
-    void push(int value) {
-        vector<int>::push_back(value);  // используем реализацию вектора
-    }
-    
-    int pop() {
-        if (!empty()) {
-            int value = back();
-            pop_back();
-            return value;
-        }
-        throw runtime_error("Стек пуст");
-    }
-    
-    bool empty() const {
-        return vector<int>::empty();
-    }
-    
-    // НЕ предоставляем доступ к другим методам вектора
-    // Это НЕ Stack "is-a" Vector, а Stack "implemented-in-terms-of" Vector
+// Private наследование
+class DerivedPrivate : private Base {
+    // publicVar становится private
+    // protectedVar становится private
+    // privateVar НЕДОСТУПНА
 };
 ```
 
-### Множественное наследование
+### Использование наследования:
 
 ```cpp
-// Интерфейсы (абстрактные классы только с чисто виртуальными функциями)
-class Drawable {
-public:
-    virtual void draw() const = 0;
-    virtual ~Drawable() = default;
-};
-
-class Clickable {
-public:
-    virtual void onClick() = 0;
-    virtual bool contains(int x, int y) const = 0;
-    virtual ~Clickable() = default;
-};
-
-class Movable {
-public:
-    virtual void move(int dx, int dy) = 0;
-    virtual ~Movable() = default;
-};
-
-// Множественное наследование
-class Button : public Drawable, public Clickable {
-private:
-    string m_text;
-    int m_x, m_y, m_width, m_height;
-
-public:
-    Button(string text, int x, int y, int w, int h)
-        : m_text(text), m_x(x), m_y(y), m_width(w), m_height(h) {}
+int main() {
+    // Создание объектов разных классов
+    Dog dog("Бобик", 3, 15.5, "Овчарка", true);
+    Bird bird("Кеша", 2, 0.5, 25.0, true);
     
-    void draw() const override {
-        cout << "Рисую кнопку: " << m_text 
-             << " [" << m_x << "," << m_y << "," << m_width << "," << m_height << "]" << endl;
-    }
+    cout << "\n=== Использование методов ===" << endl;
     
-    void onClick() override {
-        cout << "Кнопка '" << m_text << "' нажата!" << endl;
-    }
+    // Методы базового класса доступны всем производным
+    dog.sleep();    // Унаследован от Animal
+    dog.eat();      // Унаследован от Animal
+    dog.fetch();    // Специфичен для Dog
+    dog.guard();    // Специфичен для Dog
     
-    bool contains(int x, int y) const override {
-        return x >= m_x && x <= m_x + m_width &&
-               y >= m_y && y <= m_y + m_height;
-    }
-};
-
-class DraggableButton : public Button, public Movable {
-public:
-    DraggableButton(string text, int x, int y, int w, int h)
-        : Button(text, x, y, w, h) {}
+    bird.sleep();   // Унаследован от Animal  
+    bird.eat();     // Унаследован от Animal
+    bird.buildNest(); // Специфичен для Bird
     
-    void move(int dx, int dy) override {
-        // Реализация перемещения
-        cout << "Перемещаю кнопку на (" << dx << "," << dy << ")" << endl;
-    }
-};
-```
-
-### Проблема ромбовидного наследования
-
-```cpp
-class Animal {
-protected:
-    string m_name;
-public:
-    Animal(string name) : m_name(name) {}
-    virtual void speak() const = 0;
-};
-
-class Mammal : virtual public Animal {  // виртуальное наследование
-protected:
-    int m_gestationPeriod;
-public:
-    Mammal(string name, int gestation) 
-        : Animal(name), m_gestationPeriod(gestation) {}
-};
-
-class WingedAnimal : virtual public Animal {  // виртуальное наследование
-protected:
-    double m_wingspan;
-public:
-    WingedAnimal(string name, double wingspan) 
-        : Animal(name), m_wingspan(wingspan) {}
-};
-
-// Без виртуального наследования было бы две копии Animal
-class Bat : public Mammal, public WingedAnimal {
-public:
-    Bat(string name, int gestation, double wingspan)
-        : Animal(name),                // напрямую инициализируем Animal
-          Mammal(name, gestation), 
-          WingedAnimal(name, wingspan) {}
+    cout << "\n=== Полиморфное поведение ===" << endl;
+    Animal* animals[] = {&dog, &bird};
     
-    void speak() const override {
-        cout << m_name << " пищит" << endl;  // теперь m_name одна
-    }
-};
-```
-
-## 6. Полиморфизм - Один интерфейс, много реализаций
-
-### Виртуальные функции под капотом
-
-```cpp
-class Shape {
-protected:
-    string m_color;
-
-public:
-    Shape(string color) : m_color(color) {}
-    
-    // Виртуальная таблица (vtable) создается для классов с виртуальными функциями
-    virtual double area() const = 0;
-    virtual double perimeter() const = 0;
-    virtual void draw() const {
-        cout << "Рисую фигуру цвета " << m_color << endl;
-    }
-    
-    // Виртуальный деструктор ОБЯЗАТЕЛЕН
-    virtual ~Shape() {
-        cout << "Уничтожаем Shape" << endl;
-    }
-};
-
-class Circle : public Shape {
-private:
-    double m_radius;
-
-public:
-    Circle(string color, double radius) 
-        : Shape(color), m_radius(radius) {}
-    
-    // override гарантирует, что метод переопределяет виртуальный метод
-    double area() const override {
-        return 3.14159 * m_radius * m_radius;
-    }
-    
-    double perimeter() const override {
-        return 2 * 3.14159 * m_radius;
-    }
-    
-    void draw() const override {
-        cout << "Рисую круг радиуса " << m_radius 
-             << " цвета " << m_color << endl;
-    }
-    
-    ~Circle() override {
-        cout << "Уничтожаем Circle" << endl;
-    }
-};
-
-class Rectangle : public Shape {
-private:
-    double m_width, m_height;
-
-public:
-    Rectangle(string color, double w, double h)
-        : Shape(color), m_width(w), m_height(h) {}
-    
-    double area() const override {
-        return m_width * m_height;
-    }
-    
-    double perimeter() const override {
-        return 2 * (m_width + m_height);
-    }
-    
-    void draw() const override {
-        cout << "Рисую прямоугольник " << m_width << "x" << m_height 
-             << " цвета " << m_color << endl;
-    }
-    
-    // final запрещает дальнейшее переопределение
-    void scale(double factor) final {
-        m_width *= factor;
-        m_height *= factor;
-    }
-    
-    ~Rectangle() override {
-        cout << "Уничтожаем Rectangle" << endl;
-    }
-};
-
-// final класс - нельзя наследовать
-class Square final : public Rectangle {
-public:
-    Square(string color, double side)
-        : Rectangle(color, side, side) {}
-    
-    // ОШИБКА: метод scale final в Rectangle
-    // void scale(double factor) override { }
-};
-```
-
-### Как работает полиморфизм?
-
-```cpp
-void demonstratePolymorphism() {
-    vector<unique_ptr<Shape>> shapes;
-    
-    shapes.push_back(make_unique<Circle>("Красный", 5.0));
-    shapes.push_back(make_unique<Rectangle>("Синий", 4.0, 6.0));
-    shapes.push_back(make_unique<Square>("Зеленый", 3.0));
-    
-    // Полиморфное поведение во время выполнения
-    for (const auto& shape : shapes) {
-        shape->draw();                    // Вызовется правильная версия
-        cout << "Площадь: " << shape->area() << endl;      // Полиморфно
-        cout << "Периметр: " << shape->perimeter() << endl; // Полиморфно
+    for (int i = 0; i < 2; i++) {
+        animals[i]->makeSound();  // Вызовется переопределенная версия!
+        animals[i]->move();       // Вызовется переопределенная версия!
         cout << "---" << endl;
     }
     
-    // Автоматическое освобождение памяти через умные указатели
+    return 0;
 }
 ```
 
-### Вопрос: Когда не использовать виртуальные функции?
+### Преимущества наследования:
+1. **Повторное использование кода** - не нужно дублировать общую функциональность
+2. **Расширяемость** - можно добавлять новую функциональность в производных классах
+3. **Иерархия классов** - создание логических отношений между классами
+4. **Полиморфизм** - основа для полиморфного поведения
 
-**Ответ:**
-- В классах, которые не предназначены для наследования
-- В performance-critical коде (виртуальные вызовы дороже)
-- Когда нужен контроль над layout памяти
+---
 
-```cpp
-// Класс не для наследования - нет виртуальных функций
-class Point3D final {
-private:
-    double x, y, z;
+## 3. Полиморфизм (Polymorphism)
 
-public:
-    Point3D(double x, double y, double z) : x(x), y(y), z(z) {}
-    
-    // Нет виртуальных функций - класс final
-    double length() const {
-        return sqrt(x*x + y*y + z*z);
-    }
-    
-    // Статический полиморфизм через перегрузку
-    Point3D operator+(const Point3D& other) const {
-        return Point3D(x + other.x, y + other.y, z + other.z);
-    }
-};
-```
+### Что это такое?
+**Полиморфизм** - это возможность объектов разных классов с общей базой обрабатываться единообразно, но выполнять специфичные для каждого класса действия.
 
-## 7. Абстрактные классы и интерфейсы
-
-### Чисто виртуальные функции
+### Детальное объяснение:
 
 ```cpp
-// Интерфейс - только чисто виртуальные функции
-class Serializable {
-public:
-    virtual string toJson() const = 0;
-    virtual void fromJson(const string& json) = 0;
-    virtual ~Serializable() = default;
-};
+#include <iostream>
+#include <vector>
+#include <memory>
+using namespace std;
 
-class Clonable {
-public:
-    virtual unique_ptr<Clonable> clone() const = 0;
-    virtual ~Clonable() = default;
-};
-
-// Абстрактный класс - может иметь реализацию
-class Vehicle {
+// Абстрактный базовый класс
+class Shape {
 protected:
-    string m_brand;
-    string m_model;
-    int m_year;
-    double m_speed;
+    string color;
+    string name;
 
 public:
-    Vehicle(string brand, string model, int year) 
-        : m_brand(brand), m_model(model), m_year(year), m_speed(0) {}
+    Shape(string n, string c) : name(n), color(c) {}
     
-    // Чисто виртуальные функции - интерфейс
-    virtual void start() = 0;
-    virtual void stop() = 0;
-    virtual double getMaxSpeed() const = 0;
+    // Виртуальный деструктор - ОБЯЗАТЕЛЬНО для полиморфизма!
+    virtual ~Shape() {}
     
-    // Виртуальные функции с реализацией по умолчанию
-    virtual void accelerate(double amount) {
-        m_speed += amount;
-        double maxSpeed = getMaxSpeed();
-        if (m_speed > maxSpeed) {
-            m_speed = maxSpeed;
-        }
-        cout << m_brand << " " << m_model << " ускорилась до " << m_speed << " км/ч" << endl;
-    }
+    // Чисто виртуальные функции - делают класс абстрактным
+    virtual double calculateArea() const = 0;
+    virtual double calculatePerimeter() const = 0;
     
-    virtual void brake(double amount) {
-        m_speed -= amount;
-        if (m_speed < 0) m_speed = 0;
-        cout << m_brand << " " << m_model << " замедлилась до " << m_speed << " км/ч" << endl;
+    // Виртуальная функция с реализацией по умолчанию
+    virtual void draw() const {
+        cout << "Рисую " << name << " цвета " << color << endl;
     }
     
     // Невиртуальная функция
     void displayInfo() const {
-        cout << m_brand << " " << m_model << " " << m_year << " года" << endl;
-        cout << "Текущая скорость: " << m_speed << " км/ч" << endl;
+        cout << "Фигура: " << name << ", Цвет: " << color << endl;
+        cout << "Площадь: " << calculateArea() << endl;
+        cout << "Периметр: " << calculatePerimeter() << endl;
     }
     
-    virtual ~Vehicle() = default;
+    // Виртуальная функция, которая может быть переопределена
+    virtual void scale(double factor) {
+        cout << "Масштабирование " << name << " в " << factor << " раз" << endl;
+    }
 };
 
-// Конкретная реализация
-class Car : public Vehicle, public Serializable, public Clonable {
+// Конкретный класс - круг
+class Circle : public Shape {
 private:
-    int m_doors;
-    string m_fuelType;
-    double m_engineVolume;
+    double radius;
 
 public:
-    Car(string brand, string model, int year, int doors, string fuel, double engine)
-        : Vehicle(brand, model, year), m_doors(doors), m_fuelType(fuel), m_engineVolume(engine) {}
+    Circle(string c, double r) : Shape("Круг", c), radius(r) {}
     
-    // Реализация чисто виртуальных функций Vehicle
+    // Переопределение чисто виртуальных функций
+    double calculateArea() const override {
+        return 3.14159 * radius * radius;
+    }
+    
+    double calculatePerimeter() const override {
+        return 2 * 3.14159 * radius;
+    }
+    
+    // Переопределение виртуальной функции
+    void draw() const override {
+        cout << "Рисую круг радиусом " << radius 
+             << " цвета " << color << endl;
+    }
+    
+    void scale(double factor) override {
+        radius *= factor;
+        cout << "Новый радиус круга: " << radius << endl;
+    }
+    
+    double getRadius() const { return radius; }
+};
+
+// Конкретный класс - прямоугольник
+class Rectangle : public Shape {
+private:
+    double width;
+    double height;
+
+public:
+    Rectangle(string c, double w, double h) 
+        : Shape("Прямоугольник", c), width(w), height(h) {}
+    
+    double calculateArea() const override {
+        return width * height;
+    }
+    
+    double calculatePerimeter() const override {
+        return 2 * (width + height);
+    }
+    
+    void draw() const override {
+        cout << "Рисую прямоугольник " << width << "x" << height 
+             << " цвета " << color << endl;
+    }
+    
+    void scale(double factor) override {
+        width *= factor;
+        height *= factor;
+        cout << "Новые размеры прямоугольника: " 
+             << width << "x" << height << endl;
+    }
+    
+    double getWidth() const { return width; }
+    double getHeight() const { return height; }
+};
+
+// Конкретный класс - треугольник
+class Triangle : public Shape {
+private:
+    double sideA, sideB, sideC;
+
+public:
+    Triangle(string c, double a, double b, double c) 
+        : Shape("Треугольник", c), sideA(a), sideB(b), sideC(c) {}
+    
+    double calculateArea() const override {
+        // Формула Герона
+        double p = calculatePerimeter() / 2;
+        return sqrt(p * (p - sideA) * (p - sideB) * (p - sideC));
+    }
+    
+    double calculatePerimeter() const override {
+        return sideA + sideB + sideC;
+    }
+    
+    void draw() const override {
+        cout << "Рисую треугольник со сторонами " << sideA << ", " 
+             << sideB << ", " << sideC << " цвета " << color << endl;
+    }
+    
+    void scale(double factor) override {
+        sideA *= factor;
+        sideB *= factor;
+        sideC *= factor;
+        cout << "Новые стороны треугольника: " << sideA << ", " 
+             << sideB << ", " << sideC << endl;
+    }
+};
+```
+
+### Демонстрация полиморфизма:
+
+```cpp
+// Функция, работающая с базовым классом
+void processShape(Shape& shape) {
+    shape.displayInfo();
+    shape.draw();
+    cout << "---" << endl;
+}
+
+// Функция, принимающая указатель на базовый класс
+void scaleShape(Shape* shape, double factor) {
+    shape->scale(factor);
+    cout << "Новая площадь: " << shape->calculateArea() << endl;
+    cout << "---" << endl;
+}
+
+int main() {
+    cout << "=== ДЕМОНСТРАЦИЯ ПОЛИМОРФИЗМА ===" << endl;
+    
+    // Создание объектов разных классов
+    Circle circle("Красный", 5.0);
+    Rectangle rectangle("Синий", 4.0, 6.0);
+    Triangle triangle("Зеленый", 3.0, 4.0, 5.0);
+    
+    cout << "\n=== Прямая работа с объектами ===" << endl;
+    processShape(circle);
+    processShape(rectangle);
+    processShape(triangle);
+    
+    cout << "\n=== Работа через указатели на базовый класс ===" << endl;
+    vector<Shape*> shapes = {&circle, &rectangle, &triangle};
+    
+    for (Shape* shape : shapes) {
+        shape->displayInfo();
+        shape->draw();
+        cout << "---" << endl;
+    }
+    
+    cout << "\n=== Масштабирование фигур ===" << endl;
+    for (Shape* shape : shapes) {
+        scaleShape(shape, 1.5);  // Увеличиваем все фигуры в 1.5 раза
+    }
+    
+    cout << "\n=== Использование умных указателей ===" << endl;
+    vector<unique_ptr<Shape>> shapeCollection;
+    shapeCollection.push_back(make_unique<Circle>("Желтый", 3.0));
+    shapeCollection.push_back(make_unique<Rectangle>("Фиолетовый", 2.0, 3.0));
+    shapeCollection.push_back(make_unique<Triangle>("Оранжевый", 5.0, 6.0, 7.0));
+    
+    for (auto& shape : shapeCollection) {
+        shape->displayInfo();
+        shape->draw();
+        cout << "---" << endl;
+    }
+    
+    return 0;
+}
+```
+
+### Ключевые моменты полиморфизма:
+
+1. **Виртуальные функции** - позволяют переопределение в производных классах
+2. **Чисто виртуальные функции** - делают класс абстрактным
+3. **Виртуальный деструктор** - обязателен для корректного удаления объектов
+4. **override** - явное указание переопределения (рекомендуется всегда использовать)
+5. **final** - запрет дальнейшего переопределения
+
+### Преимущества полиморфизма:
+1. **Единообразие обработки** - один интерфейс для разных типов объектов
+2. **Расширяемость** - можно добавлять новые классы без изменения существующего кода
+3. **Гибкость** - поведение определяется во время выполнения (runtime)
+4. **Упрощение кода** - меньше условных конструкций
+
+---
+
+## 4. Абстракция (Abstraction)
+
+### Что это такое?
+**Абстракция** - это процесс выделения существенных характеристик объекта и игнорирования несущественных деталей.
+
+### Детальное объяснение:
+
+```cpp
+#include <iostream>
+#include <string>
+#include <vector>
+using namespace std;
+
+// Абстрактный класс - представляет общую концепцию устройства
+class Device {
+protected:
+    string manufacturer;
+    string model;
+    bool isPoweredOn;
+
+public:
+    Device(string manuf, string mod) 
+        : manufacturer(manuf), model(mod), isPoweredOn(false) {}
+    
+    virtual ~Device() {}
+    
+    // Чисто виртуальные функции - определяют интерфейс
+    virtual void powerOn() = 0;
+    virtual void powerOff() = 0;
+    virtual void performMainFunction() = 0;
+    
+    // Общие методы для всех устройств
+    virtual void displayInfo() const {
+        cout << "Устройство: " << manufacturer << " " << model << endl;
+        cout << "Состояние: " << (isPoweredOn ? "ВКЛ" : "ВЫКЛ") << endl;
+    }
+    
+    string getManufacturer() const { return manufacturer; }
+    string getModel() const { return model; }
+    bool getIsPoweredOn() const { return isPoweredOn; }
+};
+
+// Конкретная реализация - принтер
+class Printer : public Device {
+private:
+    int paperCount;
+    int inkLevel;
+
+public:
+    Printer(string manuf, string mod, int paper, int ink) 
+        : Device(manuf, mod), paperCount(paper), inkLevel(ink) {}
+    
+    void powerOn() override {
+        if (!isPoweredOn) {
+            isPoweredOn = true;
+            cout << "Принтер " << model << " включен" << endl;
+            selfTest();
+        }
+    }
+    
+    void powerOff() override {
+        if (isPoweredOn) {
+            isPoweredOn = false;
+            cout << "Принтер " << model << " выключен" << endl;
+        }
+    }
+    
+    void performMainFunction() override {
+        if (!isPoweredOn) {
+            cout << "Ошибка: Принтер выключен!" << endl;
+            return;
+        }
+        
+        if (paperCount > 0 && inkLevel > 10) {
+            cout << "Печатаю документ..." << endl;
+            paperCount--;
+            inkLevel -= 5;
+            cout << "Бумага осталось: " << paperCount << endl;
+            cout << "Уровень чернил: " << inkLevel << "%" << endl;
+        } else {
+            cout << "Ошибка: Проверьте бумагу или чернила!" << endl;
+        }
+    }
+    
+    void displayInfo() const override {
+        Device::displayInfo();
+        cout << "Бумага: " << paperCount << " листов" << endl;
+        cout << "Чернила: " << inkLevel << "%" << endl;
+    }
+    
+private:
+    void selfTest() {
+        cout << "Выполняется самотестирование принтера..." << endl;
+        cout << "Все системы работают нормально" << endl;
+    }
+};
+
+// Конкретная реализация - сканер
+class Scanner : public Device {
+private:
+    int resolutionDPI;
+    string scanType;
+
+public:
+    Scanner(string manuf, string mod, int res, string type) 
+        : Device(manuf, mod), resolutionDPI(res), scanType(type) {}
+    
+    void powerOn() override {
+        if (!isPoweredOn) {
+            isPoweredOn = true;
+            cout << "Сканер " << model << " включен" << endl;
+            calibrate();
+        }
+    }
+    
+    void powerOff() override {
+        if (isPoweredOn) {
+            isPoweredOn = false;
+            cout << "Сканер " << model << " выключен" << endl;
+        }
+    }
+    
+    void performMainFunction() override {
+        if (!isPoweredOn) {
+            cout << "Ошибка: Сканер выключен!" << endl;
+            return;
+        }
+        
+        cout << "Сканирую документ..." << endl;
+        cout << "Разрешение: " << resolutionDPI << " DPI" << endl;
+        cout << "Тип сканирования: " << scanType << endl;
+        cout << "Сканирование завершено!" << endl;
+    }
+    
+    void displayInfo() const override {
+        Device::displayInfo();
+        cout << "Разрешение: " << resolutionDPI << " DPI" << endl;
+        cout << "Тип сканирования: " << scanType << endl;
+    }
+    
+    // Специфичный метод для сканера
+    void setResolution(int newResolution) {
+        if (newResolution > 0) {
+            resolutionDPI = newResolution;
+            cout << "Разрешение установлено: " << resolutionDPI << " DPI" << endl;
+        }
+    }
+    
+private:
+    void calibrate() {
+        cout << "Калибровка сканера..." << endl;
+        cout << "Калибровка завершена" << endl;
+    }
+};
+```
+
+### Использование абстракции:
+
+```cpp
+// Функция, работающая на уровне абстракции "Устройство"
+void manageDevice(Device& device) {
+    cout << "\n=== Управление устройством ===" << endl;
+    device.displayInfo();
+    device.powerOn();
+    device.performMainFunction();
+    device.powerOff();
+}
+
+int main() {
+    cout << "=== ДЕМОНСТРАЦИЯ АБСТРАКЦИИ ===" << endl;
+    
+    // Создание конкретных устройств
+    Printer printer("Canon", "PIXMA MG304", 50, 80);
+    Scanner scanner("Epson", "Perfection V39", 1200, "Цветное");
+    
+    // Работа через абстрактный интерфейс
+    manageDevice(printer);
+    manageDevice(scanner);
+    
+    cout << "\n=== Работа через коллекцию устройств ===" << endl;
+    vector<Device*> devices = {&printer, &scanner};
+    
+    for (Device* device : devices) {
+        cout << "\n--- Обработка устройства ---" << endl;
+        device->powerOn();
+        device->performMainFunction();
+        
+        // Попытка доступа к специфичным методам требует dynamic_cast
+        if (Scanner* scannerPtr = dynamic_cast<Scanner*>(device)) {
+            scannerPtr->setResolution(2400);  // Только для сканеров
+        }
+        
+        device->displayInfo();
+    }
+    
+    // Выключение всех устройств
+    cout << "\n=== Выключение всех устройств ===" << endl;
+    for (Device* device : devices) {
+        device->powerOff();
+    }
+    
+    return 0;
+}
+```
+
+### Преимущества абстракции:
+
+1. **Сокрытие сложности** - пользователь видит только необходимый интерфейс
+2. **Упрощение использования** - не нужно знать внутреннюю реализацию
+3. **Стандартизация** - общий интерфейс для родственных классов
+4. **Снижение耦合ности** - зависимости только от абстракций, а не от конкретных реализаций
+
+---
+
+## Связь всех принципов ООП
+
+Все четыре принципа тесно связаны между собой:
+
+- **Инкапсуляция** защищает внутреннее состояние объектов
+- **Наследование** создает иерархии классов и повторно использует код  
+- **Полиморфизм** обеспечивает единообразную работу с объектами разных классов
+- **Абстракция** определяет чистые интерфейсы и скрывает сложность
+
+### Пример, объединяющий все принципы:
+
+```cpp
+// Абстракция + Инкапсуляция
+class Vehicle {
+protected:
+    string brand;
+    string model;
+    int year;
+    double speed;  // Инкапсуляция
+    
+public:
+    Vehicle(string b, string m, int y) : brand(b), model(m), year(y), speed(0) {}
+    virtual ~Vehicle() {}
+    
+    // Абстрактный интерфейс
+    virtual void start() = 0;
+    virtual void stop() = 0;
+    virtual void accelerate(double amount) = 0;
+    
+    // Инкапсуляция - контролируемый доступ
+    double getSpeed() const { return speed; }
+    void setSpeed(double s) { 
+        if (s >= 0) speed = s; 
+    }
+    
+    virtual void displayInfo() const {
+        cout << brand << " " << model << " (" << year << ")" << endl;
+        cout << "Текущая скорость: " << speed << " км/ч" << endl;
+    }
+};
+
+// Наследование
+class Car : public Vehicle {
+private:
+    int doors;
+    string fuelType;
+
+public:
+    Car(string b, string m, int y, int d, string fuel) 
+        : Vehicle(b, m, y), doors(d), fuelType(fuel) {}
+    
+    // Полиморфизм - переопределение виртуальных методов
     void start() override {
-        cout << "Автомобиль " << m_brand << " " << m_model << " заводится с ключа" << endl;
-        m_speed = 0;
+        cout << "Автомобиль " << brand << " заводится с ключа" << endl;
+        setSpeed(0);
     }
     
     void stop() override {
-        cout << "Автомобиль " << m_brand << " " << m_model << " останавливается" << endl;
-        m_speed = 0;
+        cout << "Автомобиль " << brand << " останавливается" << endl;
+        setSpeed(0);
     }
     
-    double getMaxSpeed() const override {
-        return 200.0;  // Упрощенно
+    void accelerate(double amount) override {
+        setSpeed(getSpeed() + amount);
+        cout << "Автомобиль разгоняется до " << getSpeed() << " км/ч" << endl;
     }
     
-    // Реализация Serializable
-    string toJson() const override {
-        return "{ \"brand\": \"" + m_brand + "\", \"model\": \"" + m_model + 
-               "\", \"year\": " + to_string(m_year) + ", \"doors\": " + 
-               to_string(m_doors) + " }";
+    void displayInfo() const override {
+        Vehicle::displayInfo();
+        cout << "Количество дверей: " << doors << endl;
+        cout << "Тип топлива: " << fuelType << endl;
+    }
+};
+
+class Motorcycle : public Vehicle {
+private:
+    bool hasSidecar;
+
+public:
+    Motorcycle(string b, string m, int y, bool sidecar) 
+        : Vehicle(b, m, y), hasSidecar(sidecar) {}
+    
+    void start() override {
+        cout << "Мотоцикл " << brand << " заводится кнопкой" << endl;
+        setSpeed(0);
     }
     
-    void fromJson(const string& json) override {
-        // Упрощенная реализация
-        cout << "Загружаем данные автомобиля из JSON: " << json << endl;
+    void stop() override {
+        cout << "Мотоцикл " << brand << " останавливается" << endl;
+        setSpeed(0);
     }
     
-    // Реализация Clonable
-    unique_ptr<Clonable> clone() const override {
-        return make_unique<Car>(*this);
+    void accelerate(double amount) override {
+        setSpeed(getSpeed() + amount * 1.2);  // Мотоциклы разгоняются быстрее
+        cout << "Мотоцикл разгоняется до " << getSpeed() << " км/ч" << endl;
     }
     
-    // Собственные методы
-    void honk() const {
-        cout << "Би-бип!" << endl;
+    void displayInfo() const override {
+        Vehicle::displayInfo();
+        cout << "Имеет коляску: " << (hasSidecar ? "Да" : "Нет") << endl;
+    }
+    
+    void wheelie() {  // Уникальный метод для мотоцикла
+        cout << "Мотоцикл " << brand << " делает вилли!" << endl;
     }
 };
 ```
 
-## 8. Дружественные функции - когда нарушать инкапсуляцию
-
-### Обоснованное использование friend
-
-```cpp
-class Matrix {
-private:
-    vector<vector<double>> m_data;
-    size_t m_rows, m_cols;
-
-    // Проверка индексов
-    bool isValidIndex(size_t row, size_t col) const {
-        return row < m_rows && col < m_cols;
-    }
-
-public:
-    Matrix(size_t rows, size_t cols) 
-        : m_rows(rows), m_cols(cols), m_data(rows, vector<double>(cols, 0)) {}
-    
-    // Геттеры
-    size_t getRows() const { return m_rows; }
-    size_t getCols() const { return m_cols; }
-    
-    // Доступ к элементам с проверкой
-    double& at(size_t row, size_t col) {
-        if (!isValidIndex(row, col)) {
-            throw out_of_range("Индекс вне диапазона");
-        }
-        return m_data[row][col];
-    }
-    
-    const double& at(size_t row, size_t col) const {
-        if (!isValidIndex(row, col)) {
-            throw out_of_range("Индекс вне диапазона");
-        }
-        return m_data[row][col];
-    }
-    
-    // Дружественные функции для операторов
-    friend Matrix operator+(const Matrix& lhs, const Matrix& rhs);
-    friend Matrix operator*(const Matrix& lhs, const Matrix& rhs);
-    friend ostream& operator<<(ostream& os, const Matrix& matrix);
-    
-    // Дружественный класс
-    friend class MatrixCalculator;
-};
-
-// Дружественные функции имеют доступ к приватным членам
-Matrix operator+(const Matrix& lhs, const Matrix& rhs) {
-    if (lhs.m_rows != rhs.m_rows || lhs.m_cols != rhs.m_cols) {
-        throw invalid_argument("Размеры матриц не совпадают");
-    }
-    
-    Matrix result(lhs.m_rows, lhs.m_cols);
-    for (size_t i = 0; i < lhs.m_rows; ++i) {
-        for (size_t j = 0; j < lhs.m_cols; ++j) {
-            result.m_data[i][j] = lhs.m_data[i][j] + rhs.m_data[i][j];
-        }
-    }
-    return result;
-}
-
-ostream& operator<<(ostream& os, const Matrix& matrix) {
-    for (size_t i = 0; i < matrix.m_rows; ++i) {
-        for (size_t j = 0; j < matrix.m_cols; ++j) {
-            os << matrix.m_data[i][j] << " ";
-        }
-        os << endl;
-    }
-    return os;
-}
-
-// Дружественный класс
-class MatrixCalculator {
-public:
-    static Matrix transpose(const Matrix& matrix) {
-        Matrix result(matrix.m_cols, matrix.m_rows);
-        for (size_t i = 0; i < matrix.m_rows; ++i) {
-            for (size_t j = 0; j < matrix.m_cols; ++j) {
-                result.m_data[j][i] = matrix.m_data[i][j];
-            }
-        }
-        return result;
-    }
-    
-    static double determinant(const Matrix& matrix) {
-        if (matrix.m_rows != matrix.m_cols) {
-            throw invalid_argument("Матрица должна быть квадратной");
-        }
-        // Упрощенная реализация для 2x2
-        if (matrix.m_rows == 2) {
-            return matrix.m_data[0][0] * matrix.m_data[1][1] - 
-                   matrix.m_data[0][1] * matrix.m_data[1][0];
-        }
-        // Для больших матриц - рекурсивное вычисление
-        return 0; // заглушка
-    }
-};
-```
-
-### Когда НЕ использовать friend?
-
-```cpp
-// ПЛОХО: избыточное использование friend
-class BankAccount {
-private:
-    double balance;
-    string accountNumber;
-
-public:
-    // НЕПРАВИЛЬНО - вместо friend лучше сделать метод
-    friend void printBalance(BankAccount& account) {
-        cout << "Баланс: " << account.balance << endl;
-    }
-    
-    // ПРАВИЛЬНО - метод класса
-    void printBalance() const {
-        cout << "Баланс: " << balance << endl;
-    }
-};
-
-// ПРАВИЛЬНОЕ использование friend - операторы
-class Complex {
-private:
-    double real, imag;
-
-public:
-    Complex(double r = 0, double i = 0) : real(r), imag(i) {}
-    
-    // Операторы как дружественные функции
-    friend Complex operator+(const Complex& lhs, const Complex& rhs);
-    friend bool operator==(const Complex& lhs, const Complex& rhs);
-    
-    // Методы для геттеров
-    double getReal() const { return real; }
-    double getImag() const { return imag; }
-};
-
-Complex operator+(const Complex& lhs, const Complex& rhs) {
-    return Complex(lhs.real + rhs.real, lhs.imag + rhs.imag);
-}
-
-bool operator==(const Complex& lhs, const Complex& rhs) {
-    return lhs.real == rhs.real && lhs.imag == rhs.imag;
-}
-```
-
-## 9. Статические члены - данные класса, а не объекта
-
-### Подробно о статических членах
-
-```cpp
-class DatabaseConnection {
-private:
-    string m_connectionString;
-    bool m_isConnected;
-    
-    // Статические члены - общие для всех объектов
-    static int s_connectionCount;       // количество соединений
-    static int s_maxConnections;        // максимальное количество
-    static mutex s_connectionMutex;     // для потокобезопасности
-
-public:
-    DatabaseConnection(const string& connStr) 
-        : m_connectionString(connStr), m_isConnected(false) {
-        
-        // Потокобезопасное увеличение счетчика
-        lock_guard<mutex> lock(s_connectionMutex);
-        if (s_connectionCount < s_maxConnections) {
-            s_connectionCount++;
-            m_isConnected = true;
-            cout << "Соединение установлено. Всего соединений: " 
-                 << s_connectionCount << endl;
-        } else {
-            cout << "Достигнут лимит соединений!" << endl;
-        }
-    }
-    
-    ~DatabaseConnection() {
-        if (m_isConnected) {
-            lock_guard<mutex> lock(s_connectionMutex);
-            s_connectionCount--;
-            cout << "Соединение закрыто. Осталось соединений: " 
-                 << s_connectionCount << endl;
-        }
-    }
-    
-    // Статические методы - работают только со статическими членами
-    static int getConnectionCount() {
-        return s_connectionCount;
-    }
-    
-    static int getMaxConnections() {
-        return s_maxConnections;
-    }
-    
-    static void setMaxConnections(int max) {
-        lock_guard<mutex> lock(s_connectionMutex);
-        s_maxConnections = max;
-    }
-    
-    static bool canCreateConnection() {
-        return s_connectionCount < s_maxConnections;
-    }
-    
-    // Нестатический метод
-    bool executeQuery(const string& query) {
-        if (!m_isConnected) {
-            cout << "Нет соединения с базой данных!" << endl;
-            return false;
-        }
-        cout << "Выполняем запрос: " << query << endl;
-        return true;
-    }
-};
-
-// Инициализация статических членов ВНЕ класса
-int DatabaseConnection::s_connectionCount = 0;
-int DatabaseConnection::s_maxConnections = 5;
-mutex DatabaseConnection::s_connectionMutex;
-```
-
-### Статические константы
-
-```cpp
-class MathConstants {
-public:
-    // Статические константы можно инициализировать в классе (C++11)
-    static constexpr double PI = 3.14159265358979323846;
-    static constexpr double E = 2.71828182845904523536;
-    static constexpr double SQRT2 = 1.41421356237309504880;
-    
-    // Для сложных типов нужно определение вне класса
-    static const string APP_NAME;
-    
-    // Статические методы
-    static double toRadians(double degrees) {
-        return degrees * PI / 180.0;
-    }
-    
-    static double toDegrees(double radians) {
-        return radians * 180.0 / PI;
-    }
-};
-
-// Определение статической константы
-const string MathConstants::APP_NAME = "Math Calculator";
-
-// Использование
-void useMathConstants() {
-    cout
+Это подробное объяснение охватывает все ключевые аспекты принципов ООП в C++. Каждый принцип демонстрируется на практических примерах с объяснением, почему он важен и как правильно его применять.
